@@ -184,6 +184,9 @@ class CompositeSpacePointLineSeeder {
     double dY0{0.};
     /// @brief Flag indicating which solution is constructed
     TangentAmbi ambi{TangentAmbi::LL};
+    /// @brief Default destructor
+    virtual ~TwoCircleTangentPars() = default;
+
     /// @brief Definition of the print operator
     /// @param ostr: Mutable reference to the stream to print to
     /// @param pars: The parameters to be printed
@@ -271,7 +274,7 @@ class CompositeSpacePointLineSeeder {
     std::vector<std::pair<std::size_t, std::size_t>> m_seedHits{};
     /// @brief Prints the seed solution to the screen
     /// @param ostr: Mutable reference to the stream to print to
-    void print(std::ostream& ostr) const override final;
+    void print(std::ostream& ostr) const final;
   };
 
  public:
@@ -325,8 +328,6 @@ class CompositeSpacePointLineSeeder {
     friend CompositeSpacePointLineSeeder;
 
    private:
-    /// @brief Prints the seed solution to the screen
-    void print(std::ostream& ostr) const;
     /// @brief List of straw measurement already constructed straw measurement seeds
     std::vector<SeedSolution<UncalibCont_t, Delegate_t>> m_seenSolutions{};
     /// @brief  @brief Index of the upper layer under consideration for the seeding
@@ -343,6 +344,8 @@ class CompositeSpacePointLineSeeder {
     std::size_t m_nStrawCut{0ul};
     /// @brief Flag toggling whether the upper of the lower layer shall be moved
     bool m_moveUpLayer{true};
+    /// @brief Prints the seed solution to the screen
+    void print(std::ostream& ostr) const;
   };
   /// @brief Main interface method provided by the SeederClass. The user instantiates
   ///        a SeedingState object containing all the straw hit candidates from

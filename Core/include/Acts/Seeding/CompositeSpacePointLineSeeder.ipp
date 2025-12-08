@@ -196,7 +196,7 @@ bool CompositeSpacePointLineSeeder::moveToNextHit(
       return true;
     }
   }
-  ACTS_VERBOSE(__func__ << "() " << __LINE__<<" - No good hit found.");
+  ACTS_VERBOSE(__func__ << "() " << __LINE__ << " - No good hit found.");
   return false;
 }
 
@@ -222,7 +222,7 @@ bool CompositeSpacePointLineSeeder::nextLayer(
     return false;
   }
   /// The layer index is not yet instantiated.
-  if (!layerIndex) {
+  if (!layerIndex.has_value()) {
     layerIndex = moveForward ? 0u : strawLayers.size() - 1u;
     const UnCalibCont_t& hitVec{strawLayers.at(layerIndex.value())};
     if (hitVec.size() <= m_cfg.busyLayerLimit &&
@@ -249,8 +249,9 @@ bool CompositeSpacePointLineSeeder::nextLayer(
                             << " exceeds the boundary: " << boundary << ".");
       return false;
     }
-    const std::size_t nHits = countHits(hitVec, selector);
-    if (nHits > m_cfg.busyLayerLimit) {
+
+    if (const std::size_t nHits = countHits(hitVec, selector);
+        nHits > m_cfg.busyLayerLimit) {
       ACTS_VERBOSE(__func__ << "() " << __LINE__ << " - The layer "
                             << layerIndex.value()
                             << " is too busy for seeding: " << nHits
@@ -312,8 +313,7 @@ CompositeSpacePointLineSeeder::nextSeed(
       state.startWithPattern = false;
       return patternSeed;
     }
-     ACTS_DEBUG(__func__ << "() " << __LINE__
-                          << " - Instantiate layers. ");
+    ACTS_DEBUG(__func__ << "() " << __LINE__ << " - Instantiate layers. ");
     /// No valid seed can be found
     if (!nextLayer(strawLayers, selector, strawLayers.size(),
                    state.m_lowerLayer, state.m_lowerHitIndex, true) ||
@@ -357,14 +357,15 @@ void CompositeSpacePointLineSeeder::moveToNextCandidate(
   const UncalibCont_t& upper = strawLayers[state.m_upperLayer.value()];
 
   /// Next good hit in the lower layer found
-  ACTS_VERBOSE(__func__<<"() "<<__LINE__<<" - Move to next lower hit.");
+  ACTS_VERBOSE(__func__ << "() " << __LINE__ << " - Move to next lower hit.");
   if (moveToNextHit(lower, selector, state.m_lowerHitIndex)) {
     return;
   }
 
   /// Reset the hit in the lower layer && move to the next hit
   /// in the upper layer
-  ACTS_VERBOSE(__func__<<"() "<<__LINE__<<" - All lower hits were tried increment upper hit.");
+  ACTS_VERBOSE(__func__ << "() " << __LINE__
+                        << " - All lower hits were tried increment upper hit.");
   if (firstGoodHit(lower, selector, state.m_lowerHitIndex) &&
       moveToNextHit(upper, selector, state.m_upperHitIndex)) {
     return;
@@ -378,8 +379,9 @@ void CompositeSpacePointLineSeeder::moveToNextCandidate(
                                       : state.m_upperHitIndex};
   auto& hitToMove{state.m_moveUpLayer ? state.m_upperHitIndex
                                       : state.m_lowerHitIndex};
-  ACTS_VERBOSE(__func__<<"() "<<__LINE__<<" - Move towards the next "<<(state.m_moveUpLayer ? "upper" : "lower")
-  <<" layer. Current state: "<<layerToMove.value());
+  ACTS_VERBOSE(__func__ << "() " << __LINE__ << " - Move towards the next "
+                        << (state.m_moveUpLayer ? "upper" : "lower")
+                        << " layer. Current state: " << layerToMove.value());
   /// Reset the hits in the layer that remains and go to the next layer on the
   /// other side. Next time the otherside will stay and the former will move.
   if (firstGoodHit(strawLayers[layerToStay.value()], selector, hitToStay) &&
@@ -496,22 +498,22 @@ CompositeSpacePointLineSeeder::buildSeed(
       const double distance = Acts::abs(
           signedDistance(testMe->localPosition(), testMe->sensorDirection(),
                          seedPos, seedDir));
-      if (distance > state.strawRadius) {
+      // the hits are ordered in the layer so we assume that once we found good
+      // hits we are moving away from the seed line so we can abort the hit
+      // association
+      if (distance < state.strawRadius &&
+          state.candidatePull(cctx, seedPos, seedDir, t0, *testMe) <
+              Acts::pow(m_cfg.hitPullCut, 2u)) {
         ACTS_VERBOSE(__func__ << "() " << __LINE__ << " - layer,hit = ("
                               << layerNr << "," << hitNr
                               << ") -> spacePoint: " << Acts::toString(*testMe)
-                              << " is too far away: " << distance);
-        if (hadGoodHit) {
-          break;
-        }
-        continue;
-      }
-      if (state.candidatePull(cctx, seedPos, seedDir, t0, *testMe) <
-          Acts::pow(m_cfg.hitPullCut, 2u)) {
+                              << " is close enough: " << distance);
         hadGoodHit = true;
         newSolution.append(layerNr, hitNr);
         newSolution.nStrawHits += selector(*testMe);
-      } else if (hadGoodHit) {
+        continue;
+      }
+      if (hadGoodHit) {
         break;
       }
     }

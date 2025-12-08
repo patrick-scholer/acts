@@ -71,7 +71,7 @@ void testSeeder(RandomEngine& engine, TFile& outFile) {
     CalibrationContext cctx{};
     while (auto seed = seeder.nextSeed(cctx, seedOpts)) {
       ACTS_DEBUG("Seed finder loop " << seedOpts);
-      if (seed == std::nullopt){
+      if (seed == std::nullopt) {
         break;
       }
       recoTheta.push_back(seed->parameters[toUnderlying(FitParIndex::theta)]);
