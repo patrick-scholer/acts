@@ -111,16 +111,33 @@ concept CompSpacePointSeederDelegate =
 
 }  // namespace detail
 
+/// @brief Initial line parameters from a pattern recognition like
+///        the Hough transform are often not suitable for a line fit
+///        as the resolution of the hough bins usually exceeds the size
+///        of the straws.
+///        The CompositeSpacePointLineSeeder refines the parameters
+///        and the selected measurements such that both become
+///        candidates for a stright line fit. The user needs to
+///        split the straw measurements per logical straw layer.
+///        Further, the interface needs to provide some auxiliary
+///        methods to interact with an empty space point container
+///        & to calculate a calbrated candidate pull.
+///        From these ingredients, the `CompositeSpacePointLineSeeder`
+///        iterates from the outermost layers at both ends and tries
+///        to construct new candidates. Tangent lines are constructed
+///        to a pair of circles from each seeding layer and then straw
+///        measurements from the other layers are tried to be added
+///        onto the line. If the number of straws exceed the threshold,
+///        compatible strip measurements from each strip layer are added.
 class CompositeSpacePointLineSeeder {
  public:
   /// @brief Configuration of the cuts to sort out generated
   ///        seeds with poor quality.
   struct Config {
     /// @brief Cut on the theta angle
-    std::array<double, 2> thetaRange{0, 0};
+    std::array<double, 2> thetaRange{filledArray<double, 2>(0.)};
     /// @brief Cut on the intercept range
-    std::array<double, 2> interceptRange{-20. * UnitConstants::m,
-                                         20. * UnitConstants::m};
+    std::array<double, 2> interceptRange{filledArray<double, 2>(0.)};
 
     /// @brief Upper cut on the hit chi2 w.r.t. seed in order to be associated to the seed
     double hitPullCut{5.};

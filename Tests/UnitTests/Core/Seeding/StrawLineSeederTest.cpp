@@ -15,7 +15,7 @@
 #include "TTree.h"
 
 constexpr auto logLvl = Acts::Logging::Level::INFO;
-constexpr std::size_t nEvents = 5000;
+constexpr std::size_t nEvents = 5;
 
 ACTS_LOCAL_LOGGER(getDefaultLogger("StrawLineSeederTest", logLvl));
 
@@ -31,10 +31,9 @@ void testSeeder(RandomEngine& engine, TFile& outFile) {
   DECLARE_BRANCH(double, trueY0);
   DECLARE_BRANCH(double, trueTheta);
   DECLARE_BRANCH(std::size_t, nTruthStraws);
+  DECLARE_BRANCH(std::size_t, nTruthStrips);
   DECLARE_BRANCH(std::vector<double>, recoY0);
   DECLARE_BRANCH(std::vector<double>, recoTheta);
-  DECLARE_BRANCH(std::vector<double>, uncertY0);
-  DECLARE_BRANCH(std::vector<double>, uncertTheta);
   DECLARE_BRANCH(std::vector<std::size_t>, nStraws);
   DECLARE_BRANCH(std::vector<std::size_t>, nStrips);
   DECLARE_BRANCH(std::size_t, nSeeds);
@@ -42,7 +41,7 @@ void testSeeder(RandomEngine& engine, TFile& outFile) {
   using GenCfg_t = MeasurementGenerator::Config;
   GenCfg_t genCfg{};
   genCfg.twinStraw = false;
-  genCfg.createStrips = false;
+  genCfg.createStrips = true;
 
   CompositeSpacePointLineSeeder::Config seederCfg{};
   seederCfg.busyLayerLimit = 20;
@@ -58,7 +57,10 @@ void testSeeder(RandomEngine& engine, TFile& outFile) {
     trueTheta = linePars[toUnderlying(FitParIndex::theta)];
     auto testTubes =
         MeasurementGenerator::spawn(line, 0._ns, engine, genCfg, logger());
-    nTruthStraws = testTubes.size();
+    nTruthStraws = static_cast<std::size_t>(std::ranges::count_if(
+        testTubes, [](const auto& testSp) { return testSp->isStraw(); }));
+    nTruthStrips = static_cast<std::size_t>(std::ranges::count_if(
+        testTubes, [](const auto& testSp) { return !testSp->isStraw(); }));
     auto calibrator = std::make_unique<SpCalibrator>();
 
     using SeedState_t =
@@ -76,6 +78,12 @@ void testSeeder(RandomEngine& engine, TFile& outFile) {
       }
       recoTheta.push_back(seed->parameters[toUnderlying(FitParIndex::theta)]);
       recoY0.push_back(seed->parameters[toUnderlying(FitParIndex::y0)]);
+
+      const auto seedStraws = static_cast<std::size_t>(std::ranges::count_if(
+          seed->hits, [](const auto& testMe) { return testMe->isStraw(); }));
+      const auto seedStrips = seed->hits().size() - seedStraws;
+      nStraws.push_back(seedStraws);
+      nStrips.push_back(seedStrips);
       ++nSeeds;
     }
     ACTS_DEBUG("======Event " << evt << " found " << nSeeds << " seeds.");
@@ -83,8 +91,6 @@ void testSeeder(RandomEngine& engine, TFile& outFile) {
     outTree->Fill();
     recoY0.clear();
     recoTheta.clear();
-    uncertY0.clear();
-    uncertTheta.clear();
     nStraws.clear();
     nStrips.clear();
   }

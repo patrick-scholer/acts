@@ -448,9 +448,12 @@ CompositeSpacePointLineSeeder::buildSeed(
     SeedingState<UncalibCont_t, CalibCont_t, Delegate_t>& state) const {
   const StrawLayers_t<UncalibCont_t>& strawLayers{state.strawHits()};
 
-  ACTS_VERBOSE(__func__ << "() " << __LINE__
-                        << " - Try to draw new seed from \n"
-                        << state << ".");
+  ACTS_DEBUG(__func__ << "() " << __LINE__ << " - Try to draw new seed from \n"
+                      << state << ".");
+  if (state.strawRadius <= Acts::s_epsilon()) {
+    throw std::invalid_argument(
+        "buildSeed() - Please configure the state's strawRadius");
+  }
   const auto& upperHit =
       *strawLayers.at(state.m_upperLayer.value()).at(state.m_upperHitIndex);
   const auto& lowerHit =
@@ -533,6 +536,8 @@ CompositeSpacePointLineSeeder::consructSegmentSeed(
     const CalibrationContext& cctx, const Line_t& tangentSeed,
     SeedingState<UncalibCont_t, CalibCont_t, Delegate_t>& state,
     SeedSolution<UncalibCont_t, Delegate_t>&& newSolution) const {
+  ACTS_DEBUG(__func__ << "() " << __LINE__ << " Construct new seed from \n"
+                      << newSolution);
   SegmentSeed<CalibCont_t> finalSeed{
       combineWithPattern(tangentSeed, state.patternParams),
       state.newContainer(cctx)};
